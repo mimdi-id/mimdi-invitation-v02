@@ -9,22 +9,33 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Definisikan tipe data untuk user dan context
+// --- UBAH TIPE DATA INI ---
+// Tipe data untuk paket
+type Package = {
+  id: string;
+  name: string;
+};
+
+// Tipe data untuk pengguna, sekarang menyertakan peran (role)
 interface User {
   id: string;
   name: string;
   email: string;
+  role: 'CLIENT' | 'ADMIN' | 'PARTNER'; // <-- Tambahkan ini
+  activePackage: Package | null;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (newToken: string) => void;
-  logout: () => void;
   isLoading: boolean;
+  login: (token: string) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -33,42 +44,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('mimdi_token');
+    const storedToken = localStorage.getItem('authToken');
     if (storedToken) {
       setToken(storedToken);
-      try {
-        const payload = JSON.parse(atob(storedToken.split('.')[1]));
-        setUser({ id: payload.sub, name: payload.name, email: payload.email });
-      } catch (error) {
-        console.error('Gagal decode token:', error);
-        localStorage.removeItem('mimdi_token');
-      }
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
-  const login = (newToken: string) => {
-    localStorage.setItem('mimdi_token', newToken);
-    setToken(newToken);
-    try {
-      const payload = JSON.parse(atob(newToken.split('.')[1]));
-      setUser({ id: payload.sub, name: payload.name, email: payload.email });
-      router.push('/user/dashboard');
-    } catch (error) {
-      console.error('Gagal decode token saat login:', error);
-      logout();
+  useEffect(() => {
+    if (token) {
+      const fetchUser = async () => {
+        try {
+          const response = await fetch(`${API_URL}/auth/profile`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+          } else {
+            logout();
+          }
+        } catch (error) {
+          console.error('Gagal mengambil data user', error);
+          logout();
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchUser();
     }
+  }, [token]);
+
+  const login = (newToken: string) => {
+    localStorage.setItem('authToken', newToken);
+    setToken(newToken);
   };
 
   const logout = () => {
-    localStorage.removeItem('mimdi_token');
-    setUser(null);
+    localStorage.removeItem('authToken');
     setToken(null);
+    setUser(null);
     router.push('/login');
   };
 
+  // useEffect untuk menangani redirect setelah login berhasil
+  useEffect(() => {
+    if (token && user) {
+      // Jika user adalah admin, arahkan ke dashboard admin
+      if (user.role === 'ADMIN') {
+        router.push('/admin/users');
+      } else {
+        // Jika bukan, arahkan ke dashboard klien
+        router.push('/user/dashboard');
+      }
+    }
+  }, [token, user, router]);
+
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -77,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth harus digunakan di dalam AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }
