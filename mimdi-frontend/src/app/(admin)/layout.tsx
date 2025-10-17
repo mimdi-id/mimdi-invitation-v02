@@ -30,6 +30,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Package,
+  DollarSign, // <-- Impor ikon baru
   LogOut, // <-- Impor ikon baru
 } from 'lucide-react';
 
@@ -55,6 +56,8 @@ export default function AdminLayout({
     { href: '/admin/transactions', label: 'Transaksi', icon: CreditCard },
     { href: '/admin/partners', label: 'Mitra', icon: Handshake },
     { href: '/admin/packages', label: 'Paket', icon: Package },
+    { href: '/admin/commissions', label: 'Komisi', icon: DollarSign }, // <-- Tambahkan ini
+
   ];
 
   if (isLoading || !user) {

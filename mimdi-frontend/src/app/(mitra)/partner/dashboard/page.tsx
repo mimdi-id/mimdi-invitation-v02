@@ -4,14 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-// Impor komponen-komponen baru dari Shadcn UI
 import { Button } from '@/components/ui/button';
 import { 
   Card, 
   CardContent, 
   CardDescription, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,7 +96,7 @@ export default function PartnerDashboardPage() {
 
   if (isAuthLoading || isLoading) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="flex h-full items-center justify-center">
         <p>Memuat dashboard mitra...</p>
       </div>
     );
@@ -111,7 +111,6 @@ export default function PartnerDashboardPage() {
         {error && <p className="mt-4 text-red-600">{error}</p>}
         
         <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-3">
-          {/* Kartu Sisa Kuota */}
           <Card className="md:col-span-1 flex flex-col justify-center items-center text-center">
             <CardHeader>
               <CardTitle className="text-sm font-medium text-muted-foreground">Sisa Kuota Undangan</CardTitle>
@@ -120,8 +119,6 @@ export default function PartnerDashboardPage() {
               <p className="text-6xl font-extrabold text-slate-900 dark:text-slate-50">{profile?.remainingQuota}</p>
             </CardContent>
           </Card>
-
-          {/* Form Pembelian Kuota */}
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Beli Kuota Tambahan</CardTitle>
@@ -174,11 +171,12 @@ export default function PartnerDashboardPage() {
                         </span>
                     </CardContent>
                     <CardFooter className="flex justify-end gap-2">
+                      {/* --- UBAH TAUTAN INI --- */}
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/user/invitation/rsvp/${inv.id}`}>Lihat RSVP</Link>
+                        <Link href={`/partner/invitation/rsvp/${inv.id}`}>Lihat RSVP</Link>
                       </Button>
                       <Button size="sm" asChild>
-                         <Link href={`/user/invitation/edit/${inv.id}`}>Edit</Link>
+                         <Link href={`/partner/invitation/edit/${inv.id}`}>Edit</Link>
                       </Button>
                     </CardFooter>
                   </Card>
@@ -200,3 +198,4 @@ export default function PartnerDashboardPage() {
     </div>
   );
 }
+

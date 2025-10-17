@@ -4,9 +4,21 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import KlasikEleganTheme from './themes/KlasikEleganTheme';
 import DefaultTheme from './themes/DefaultTheme';
-import { Button } from '@/components/ui/button'; // <-- FIX: Impor komponen Button
+import { Button } from '@/components/ui/button';
 
-// ... (semua tipe data tetap sama)
+// Tipe data diperbarui
+type Invitation = {
+  id: string;
+  title: string;
+  slug: string;
+  details: InvitationDetails | null;
+  activeSections: Record<string, boolean> | null;
+  files: InvitationFile[];
+  template: { name: string };
+  coverImageUrl?: string | null; // <-- Tambahkan properti ini
+};
+
+// ... (semua tipe data lain tetap sama)
 type InvitationFile = {
   id: string;
   presignedUrl: string;
@@ -38,24 +50,33 @@ type InvitationDetails = {
   events: Event[];
   story?: StoryPart[];
   gifts?: GiftAccount[];
-};
-type Invitation = {
-  id: string;
-  title: string;
-  slug: string;
-  details: InvitationDetails | null;
-  activeSections: Record<string, boolean> | null;
-  files: InvitationFile[];
-  template: { name: string };
+  quote?: string;
+  musicUrl?: string;
+  videoUrl?: string;
+  invitedBy?: string[];
 };
 
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Komponen Halaman Sampul (Cover)
-function CoverPage({ guestName, brideName, groomName, onOpen }: { guestName: string, brideName: string, groomName: string, onOpen: () => void }) {
+// Komponen Halaman Sampul (Cover) diperbarui
+function CoverPage({ 
+  guestName, 
+  brideName, 
+  groomName, 
+  onOpen,
+  coverImageUrl 
+}: { 
+  guestName: string, 
+  brideName: string, 
+  groomName: string, 
+  onOpen: () => void,
+  coverImageUrl?: string | null 
+}) {
+  const background = coverImageUrl || 'https://images.unsplash.com/photo-1525972457018-b8c106a7aaa4?q=80&w=1974&auto=format&fit=crop';
+  
   return (
-    <div className="fixed inset-0 z-50 flex h-screen w-screen flex-col items-center justify-center bg-gray-800 bg-cover bg-center text-white" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1525972457018-b8c106a7aaa4?q=80&w=1974&auto=format&fit=crop)' }}>
+    <div className="fixed inset-0 z-50 flex h-screen w-screen flex-col items-center justify-center bg-gray-800 bg-cover bg-center text-white" style={{ backgroundImage: `url(${background})` }}>
       <div className="absolute inset-0 bg-black/60"></div>
       <div className="relative z-10 text-center font-serif">
         <p className="text-lg">The Wedding Of</p>
@@ -74,16 +95,13 @@ function CoverPage({ guestName, brideName, groomName, onOpen }: { guestName: str
 
 
 export default function InvitationPage({ params }: { params: { slug: string } }) {
+  // ... (semua state dan fungsi handle lainnya tetap sama) ...
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [guestMessages, setGuestMessages] = useState<Guest[]>([]);
-  
-  // --- State & Logika Baru ---
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const searchParams = useSearchParams();
-  const guestName = searchParams.get('to') || 'Tamu Undangan'; // Ambil nama dari URL, atau gunakan default
-  
-  // ... (State lain untuk interaktivitas tetap sama)
+  const guestName = searchParams.get('to') || 'Tamu Undangan';
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [rsvpName, setRsvpName] = useState('');
   const [rsvpStatus, setRsvpStatus] = useState('ATTENDING');
@@ -92,7 +110,6 @@ export default function InvitationPage({ params }: { params: { slug: string } })
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Isi nama di form RSVP secara otomatis jika ada nama tamu di URL
     if (searchParams.get('to')) {
       setRsvpName(searchParams.get('to') || '');
     }
@@ -115,6 +132,11 @@ export default function InvitationPage({ params }: { params: { slug: string } })
           const data = await guestsRes.json();
           setGuestMessages(data);
         }
+
+        fetch(`${API_URL}/public/invitations/${params.slug}/view`, {
+          method: 'POST',
+        }).catch(err => console.error("Failed to increment view count:", err));
+
       } catch (error) {
         console.error('Gagal mengambil data:', error);
       } finally {
@@ -124,7 +146,6 @@ export default function InvitationPage({ params }: { params: { slug: string } })
     fetchData();
   }, [params.slug]);
 
-  // ... (semua fungsi handle lainnya tetap sama) ...
   const handleRsvpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -179,6 +200,7 @@ export default function InvitationPage({ params }: { params: { slug: string } })
   };
 
   const renderTheme = () => {
+    // ... (logika renderTheme tetap sama) ...
     if (!invitation) return null;
     const themeProps = {
       invitation,
@@ -192,7 +214,6 @@ export default function InvitationPage({ params }: { params: { slug: string } })
       copiedText,
       guestMessages,
     };
-
     switch (invitation.template.name) {
       case 'Klasik Elegan':
         return <KlasikEleganTheme {...themeProps} />;
@@ -226,6 +247,7 @@ export default function InvitationPage({ params }: { params: { slug: string } })
           brideName={invitation.details?.bride?.name || ''}
           groomName={invitation.details?.groom?.name || ''}
           onOpen={() => setIsCoverOpen(true)}
+          coverImageUrl={invitation.coverImageUrl} // <-- Teruskan URL foto sampul
         />
       )}
       {renderTheme()}

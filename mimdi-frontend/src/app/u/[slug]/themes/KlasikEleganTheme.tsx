@@ -1,7 +1,7 @@
 // File tema ini sekarang bertindak sebagai "Sutradara" dan "Pemberi Gaya"
 
-// import MusicPlayer from '@/components/features/MusicPlayer'; // <-- Dihapus
-// Impor semua "blok bangunan" generik
+import CountdownTimer from '@/components/features/CountdownTimer'; // <-- Impor komponen Countdown
+import MusicPlayer from '@/components/features/MusicPlayer';
 import { CoupleSection } from '@/components/invitation-blocks/CoupleSection';
 import { EventSection } from '@/components/invitation-blocks/EventSection';
 import { StorySection } from '@/components/invitation-blocks/StorySection';
@@ -9,7 +9,7 @@ import { GallerySection } from '@/components/invitation-blocks/GallerySection';
 import { GiftSection } from '@/components/invitation-blocks/GiftSection';
 import { RsvpSection } from '@/components/invitation-blocks/RsvpSection';
 
-// Tipe data diperbarui
+// ... (semua tipe data tetap sama) ...
 type InvitationFile = {
   id: string;
   presignedUrl: string;
@@ -42,7 +42,8 @@ type InvitationDetails = {
   story?: StoryPart[];
   gifts?: GiftAccount[];
   quote?: string;
-  // musicUrl?: string; // <-- Dihapus
+  musicUrl?: string;
+  videoUrl?: string;
   invitedBy?: string[];
 };
 type Invitation = {
@@ -67,7 +68,6 @@ type ThemeProps = {
   guestMessages: Guest[];
 };
 
-
 export default function KlasikEleganTheme({
   invitation,
   handleRsvpSubmit,
@@ -82,12 +82,15 @@ export default function KlasikEleganTheme({
 }: ThemeProps) {
   if (!invitation.details) return null;
 
-  const { bride, groom, events, story, gifts, quote, invitedBy } = invitation.details;
+  const { bride, groom, events, story, gifts, quote, musicUrl, videoUrl, invitedBy } = invitation.details;
   const sections = invitation.activeSections || {};
+  const embedUrl = getYouTubeEmbedUrl(videoUrl || '');
+  // Ambil tanggal acara pertama sebagai target hitung mundur
+  const mainEventDate = events && events.length > 0 ? events[0].date : '';
 
   return (
     <div className="min-h-screen bg-gray-50 font-serif text-gray-800">
-       {/* {(sections.music ?? true) && musicUrl && <MusicPlayer src={musicUrl} />} // <-- Dihapus */}
+       {/* MusicPlayer dihapus sementara sesuai permintaan sebelumnya */}
 
       <div className="mx-auto max-w-3xl p-6 sm:p-12">
         <header className="text-center">
@@ -114,11 +117,35 @@ export default function KlasikEleganTheme({
           </section>
         )}
         
+        {/* --- IMPLEMENTASI HITUNG MUNDUR --- */}
+        {(sections.countdown ?? true) && mainEventDate && (
+           <section className="my-16 text-center">
+              <CountdownTimer targetDate={mainEventDate} />
+           </section>
+        )}
+        {/* --- END IMPLEMENTASI --- */}
+
         <EventSection
           events={events}
           cardClassName="border-orange-200"
           titleClassName="text-orange-800"
         />
+        
+        {(sections.video ?? true) && embedUrl && (
+          <section className="my-16">
+            <h3 className="mb-8 text-center text-3xl font-bold text-slate-800">Momen Spesial</h3>
+            <div className="aspect-video w-full">
+              <iframe
+                className="h-full w-full rounded-lg shadow-md"
+                src={embedUrl}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </section>
+        )}
 
         {(sections.story ?? true) && story && story.length > 0 && (
           <StorySection story={story} titleClassName="text-orange-800" />
@@ -164,5 +191,23 @@ export default function KlasikEleganTheme({
       </div>
     </div>
   );
+}
+
+// Fungsi getYouTubeEmbedUrl harus ada di sini jika belum dipindahkan ke file utilitas
+function getYouTubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  let videoId = '';
+  if (url.includes('youtube.com/watch')) {
+    const urlParams = new URLSearchParams(new URL(url).search);
+    videoId = urlParams.get('v') || '';
+  } 
+  else if (url.includes('youtu.be/')) {
+    videoId = url.split('youtu.be/')[1].split('?')[0];
+  }
+
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  return null;
 }
 

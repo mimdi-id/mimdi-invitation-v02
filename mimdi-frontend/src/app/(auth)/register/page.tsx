@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react'; // <-- Impor useEffect
+import { useRouter, useSearchParams } from 'next/navigation'; // <-- Impor useSearchParams
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,11 +24,34 @@ export default function RegisterPage() {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams(); // <-- Hook untuk membaca parameter URL
+
+  const [affiliateCode, setAffiliateCode] = useState<string | null>(null);
+
+  // useEffect untuk menangkap kode afiliasi dari URL saat halaman pertama kali dimuat
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setAffiliateCode(refCode);
+      console.log(`Kode Afiliasi terdeteksi: ${refCode}`);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setMessage('Memproses...');
+
+    // Siapkan data payload
+    const payload: { name: string; email: string; password: string; affiliateCode?: string } = {
+      name,
+      email,
+      password,
+    };
+    // Jika ada kode afiliasi, tambahkan ke payload
+    if (affiliateCode) {
+      payload.affiliateCode = affiliateCode;
+    }
 
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
@@ -36,7 +59,7 @@ export default function RegisterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
