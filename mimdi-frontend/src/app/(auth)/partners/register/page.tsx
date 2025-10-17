@@ -17,7 +17,7 @@ import Link from 'next/link';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export default function RegisterPage() {
+export default function PartnerRegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +31,7 @@ export default function RegisterPage() {
     setMessage('Memproses...');
 
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
+      const response = await fetch(`${API_URL}/partners/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -45,10 +45,8 @@ export default function RegisterPage() {
         throw new Error(data.message || 'Gagal untuk mendaftar');
       }
 
-      setMessage('Pendaftaran berhasil! Anda akan diarahkan ke halaman login.');
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
+      setMessage('Pendaftaran berhasil! Akun Anda sedang ditinjau oleh Admin. Silakan login setelah akun disetujui.');
+      // Kita tidak redirect otomatis, biarkan user melihat pesannya
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Terjadi kesalahan');
       setIsSubmitting(false);
@@ -62,19 +60,19 @@ export default function RegisterPage() {
            <div className="flex justify-center mb-4">
             <img src="/logo.svg" alt="Mimdi Invitation Logo" className="h-16 w-16" />
           </div>
-          <CardTitle className="text-2xl">Buat Akun Klien</CardTitle>
+          <CardTitle className="text-2xl">Daftar sebagai Mitra</CardTitle>
           <CardDescription>
-            Isi data di bawah ini untuk memulai.
+            Isi data di bawah ini untuk menjadi bagian dari Mimdi.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nama Lengkap</Label>
+              <Label htmlFor="name">Nama Usaha/Pribadi</Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="Nama Anda"
+                placeholder="Nama Anda atau Usaha Anda"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -123,4 +121,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-// Impor komponen tema yang baru kita buat
+import { useSearchParams } from 'next/navigation';
 import KlasikEleganTheme from './themes/KlasikEleganTheme';
 import DefaultTheme from './themes/DefaultTheme';
+import { Button } from '@/components/ui/button'; // <-- FIX: Impor komponen Button
 
-// Tipe data untuk file, acara, cerita, hadiah, detail, dan undangan lengkap
+// ... (semua tipe data tetap sama)
 type InvitationFile = {
   id: string;
   presignedUrl: string;
@@ -26,6 +26,12 @@ type GiftAccount = {
   accountNumber: string;
   accountHolder: string;
 };
+type Guest = {
+  id: string;
+  name: string;
+  message: string | null;
+  createdAt: string;
+}
 type InvitationDetails = {
   bride: { name: string; father: string; mother: string };
   groom: { name: string; father: string; mother: string };
@@ -36,20 +42,48 @@ type InvitationDetails = {
 type Invitation = {
   id: string;
   title: string;
+  slug: string;
   details: InvitationDetails | null;
   activeSections: Record<string, boolean> | null;
   files: InvitationFile[];
-  template: { name: string }; // <-- Tambahkan informasi tema
+  template: { name: string };
 };
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Komponen "Manajer Tema"
+// Komponen Halaman Sampul (Cover)
+function CoverPage({ guestName, brideName, groomName, onOpen }: { guestName: string, brideName: string, groomName: string, onOpen: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex h-screen w-screen flex-col items-center justify-center bg-gray-800 bg-cover bg-center text-white" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1525972457018-b8c106a7aaa4?q=80&w=1974&auto=format&fit=crop)' }}>
+      <div className="absolute inset-0 bg-black/60"></div>
+      <div className="relative z-10 text-center font-serif">
+        <p className="text-lg">The Wedding Of</p>
+        <h1 className="my-4 text-6xl font-bold">{brideName} & {groomName}</h1>
+        <div className="mt-8">
+          <p className="text-sm">Kepada Yth.</p>
+          <p className="mt-1 text-2xl font-semibold">{guestName}</p>
+        </div>
+        <Button onClick={onOpen} className="mt-10 animate-pulse">
+          Buka Undangan
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
 export default function InvitationPage({ params }: { params: { slug: string } }) {
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // State untuk interaktivitas (RSVP & Copy)
+  const [guestMessages, setGuestMessages] = useState<Guest[]>([]);
+  
+  // --- State & Logika Baru ---
+  const [isCoverOpen, setIsCoverOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const guestName = searchParams.get('to') || 'Tamu Undangan'; // Ambil nama dari URL, atau gunakan default
+  
+  // ... (State lain untuk interaktivitas tetap sama)
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [rsvpName, setRsvpName] = useState('');
   const [rsvpStatus, setRsvpStatus] = useState('ATTENDING');
@@ -58,24 +92,39 @@ export default function InvitationPage({ params }: { params: { slug: string } })
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchInvitationData = async () => {
-      const fetchUrl = `${API_URL}/public/invitations/${params.slug}`;
+    // Isi nama di form RSVP secara otomatis jika ada nama tamu di URL
+    if (searchParams.get('to')) {
+      setRsvpName(searchParams.get('to') || '');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(fetchUrl, { cache: 'no-store' });
-        if (response.ok) {
-          const data = await response.json();
+        setIsLoading(true);
+        const [invitationRes, guestsRes] = await Promise.all([
+          fetch(`${API_URL}/public/invitations/${params.slug}`, { cache: 'no-store' }),
+          fetch(`${API_URL}/public/invitations/${params.slug}/rsvps`, { cache: 'no-store' })
+        ]);
+
+        if (invitationRes.ok) {
+          const data = await invitationRes.json();
           setInvitation(data);
         }
+        if (guestsRes.ok) {
+          const data = await guestsRes.json();
+          setGuestMessages(data);
+        }
       } catch (error) {
-        console.error('Gagal mengambil data undangan:', error);
+        console.error('Gagal mengambil data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchInvitationData();
+    fetchData();
   }, [params.slug]);
 
-  // Fungsi-fungsi interaktif
+  // ... (semua fungsi handle lainnya tetap sama) ...
   const handleRsvpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -96,6 +145,12 @@ export default function InvitationPage({ params }: { params: { slug: string } })
       if (!response.ok) {
         throw new Error('Gagal mengirim konfirmasi. Silakan coba lagi.');
       }
+      const guestsRes = await fetch(`${API_URL}/public/invitations/${params.slug}/rsvps`, { cache: 'no-store' });
+      if (guestsRes.ok) {
+        const data = await guestsRes.json();
+        setGuestMessages(data);
+      }
+      
       setSubmitMessage('Terima kasih! Konfirmasi Anda telah kami terima.');
       setRsvpName('');
       setRsvpStatus('ATTENDING');
@@ -123,11 +178,8 @@ export default function InvitationPage({ params }: { params: { slug: string } })
     document.body.removeChild(textArea);
   };
 
-  // --- Logika Inti Pemilih Tema ---
   const renderTheme = () => {
     if (!invitation) return null;
-
-    // Kumpulkan semua props yang dibutuhkan oleh komponen tema
     const themeProps = {
       invitation,
       handleRsvpSubmit,
@@ -138,23 +190,19 @@ export default function InvitationPage({ params }: { params: { slug: string } })
       isSubmitting,
       submitMessage,
       copiedText,
+      guestMessages,
     };
 
-    // Tentukan komponen tema mana yang akan dirender berdasarkan nama tema
     switch (invitation.template.name) {
       case 'Klasik Elegan':
         return <KlasikEleganTheme {...themeProps} />;
-      // Nanti kita bisa tambahkan case lain di sini, misal:
-      // case 'Modern Minimalis':
-      //   return <ModernMinimalisTheme {...themeProps} />;
       default:
-        // Jika tidak ada tema yang cocok, tampilkan tema default
         return <DefaultTheme invitation={invitation} />;
     }
   };
 
   if (isLoading) {
-    return <div className="text-center p-10">Memuat undangan...</div>;
+    return <div className="p-10 text-center">Memuat undangan...</div>;
   }
   
   if (!invitation) {
@@ -169,8 +217,19 @@ export default function InvitationPage({ params }: { params: { slug: string } })
       </div>
     );
   }
-
-  // Sekarang, komponen ini hanya merender hasil dari fungsi pemilih tema
-  return renderTheme();
+  
+  return (
+    <div>
+      {!isCoverOpen && (
+        <CoverPage 
+          guestName={guestName}
+          brideName={invitation.details?.bride?.name || ''}
+          groomName={invitation.details?.groom?.name || ''}
+          onOpen={() => setIsCoverOpen(true)}
+        />
+      )}
+      {renderTheme()}
+    </div>
+  );
 }
 

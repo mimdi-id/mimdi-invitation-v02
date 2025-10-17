@@ -1,21 +1,36 @@
 'use client';
 
 import { useState } from 'react';
-// FIX: Menggunakan path relatif yang benar dari /src/app/(auth)/login
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from 'next/link';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const { login } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('Loading...');
+    setIsSubmitting(true);
+    setMessage('Memuat...');
 
     try {
-      const response = await fetch('http://localhost:3001/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -33,60 +48,67 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Error saat login:', error);
       setMessage(error instanceof Error ? error.message : 'Terjadi kesalahan');
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
-        <h1 className="mb-6 text-center text-3xl font-bold">Login</h1>
-        <form onSubmit={handleSubmit}>
-          {/* Form JSX tidak berubah */}
-          <div className="mb-4">
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500 sm:text-sm"
-            />
+    <div className="flex min-h-screen w-full items-center justify-center bg-slate-100 p-6 dark:bg-slate-950 md:p-10">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <img src="/logo.svg" alt="Mimdi Invitation Logo" className="h-16 w-16" />
           </div>
-          <div className="mb-6">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500 sm:text-sm"
-            />
+          <CardTitle className="text-2xl">Login ke Akun Anda</CardTitle>
+          <CardDescription>
+            Masukkan email dan password Anda di bawah ini.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+             {message && (
+              <p className={`text-sm ${message.startsWith('Memuat') ? 'text-slate-500' : 'text-red-500'}`}>
+                {message}
+              </p>
+            )}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Memproses...' : 'Login'}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-col items-center space-y-3">
+          <p className="text-sm text-muted-foreground">Belum punya akun?</p>
+          <div className="w-full space-y-2">
+             <Button variant="outline" className="w-full" asChild>
+              <Link href="/register">Daftar sebagai Klien</Link>
+            </Button>
+             <Button variant="outline" className="w-full" asChild>
+              <Link href="/partners/register">Daftar sebagai Mitra</Link>
+            </Button>
           </div>
-          <button
-            type="submit"
-            className="w-full rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-          >
-            Login
-          </button>
-        </form>
-        {message && (
-          <p className="mt-4 break-words rounded bg-slate-100 p-2 text-center text-sm text-slate-700">
-            {message}
-          </p>
-        )}
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

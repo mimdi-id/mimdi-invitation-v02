@@ -7,9 +7,8 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // <-- Impor usePathname
 
-// --- UBAH TIPE DATA INI ---
 // Tipe data untuk paket
 type Package = {
   id: string;
@@ -21,7 +20,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'CLIENT' | 'ADMIN' | 'PARTNER'; // <-- Tambahkan ini
+  role: 'CLIENT' | 'ADMIN' | 'PARTNER';
   activePackage: Package | null;
 }
 
@@ -42,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname(); // <-- Dapatkan path URL saat ini
 
   useEffect(() => {
     const storedToken = localStorage.getItem('authToken');
@@ -90,18 +90,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  // useEffect untuk menangani redirect setelah login berhasil
+  // --- LOGIKA REDIRECT YANG DIPERBARUI ---
   useEffect(() => {
+    // Daftar halaman yang seharusnya tidak diakses jika sudah login
+    const authPages = ['/login', '/register', '/partners/register'];
+
     if (token && user) {
-      // Jika user adalah admin, arahkan ke dashboard admin
-      if (user.role === 'ADMIN') {
-        router.push('/admin/users');
-      } else {
-        // Jika bukan, arahkan ke dashboard klien
-        router.push('/user/dashboard');
+      // Jika pengguna sudah login DAN sedang berada di halaman login/register,
+      // maka arahkan mereka ke dashboard yang sesuai.
+      if (authPages.includes(pathname)) {
+        switch (user.role) {
+          case 'ADMIN':
+            router.push('/admin/users');
+            break;
+          case 'PARTNER':
+            router.push('/partner/dashboard');
+            break;
+          case 'CLIENT':
+            router.push('/user/dashboard');
+            break;
+          default:
+            router.push('/login');
+        }
       }
+      // Jika pengguna sudah login tapi TIDAK di halaman auth, biarkan saja.
     }
-  }, [token, user, router]);
+  }, [token, user, router, pathname]); // <-- Tambahkan pathname
 
 
   return (
@@ -118,4 +132,3 @@ export function useAuth() {
   }
   return context;
 }
-
