@@ -149,9 +149,10 @@ export default function PartnerDashboardPage() {
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Undangan Klien Saya</h2>
                 <p className="text-muted-foreground text-sm">Kelola semua undangan yang Anda buat untuk klien.</p>
              </div>
+             {/* --- UBAH TAUTAN INI --- */}
              <Button asChild>
-                <Link href="/partner/invitations/create">
-                  + Buat Undangan Baru
+                <Link href="/partner/clients/create">
+                  + Buat untuk Klien Baru
                 </Link>
              </Button>
           </div>
@@ -171,7 +172,6 @@ export default function PartnerDashboardPage() {
                         </span>
                     </CardContent>
                     <CardFooter className="flex justify-end gap-2">
-                      {/* --- UBAH TAUTAN INI --- */}
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/partner/invitation/rsvp/${inv.id}`}>Lihat RSVP</Link>
                       </Button>
@@ -186,8 +186,8 @@ export default function PartnerDashboardPage() {
                   <h3 className="text-lg font-medium text-slate-900 dark:text-slate-50">Anda belum membuat undangan</h3>
                   <p className="mt-1 text-sm text-muted-foreground">Gunakan kuota Anda untuk membuat undangan pertama bagi klien!</p>
                    <Button className="mt-4" asChild>
-                     <Link href="/partner/invitations/create">
-                      Buat Undangan Baru
+                     <Link href="/partner/clients/create">
+                      Buat untuk Klien Baru
                     </Link>
                   </Button>
                 </div>

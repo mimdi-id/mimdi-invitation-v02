@@ -30,8 +30,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Package,
-  DollarSign, // <-- Impor ikon baru
-  LogOut, // <-- Impor ikon baru
+  Puzzle,
+  DollarSign, // <-- FIX: Pastikan ikon ini diimpor
+  LogOut,
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -56,8 +57,8 @@ export default function AdminLayout({
     { href: '/admin/transactions', label: 'Transaksi', icon: CreditCard },
     { href: '/admin/partners', label: 'Mitra', icon: Handshake },
     { href: '/admin/packages', label: 'Paket', icon: Package },
-    { href: '/admin/commissions', label: 'Komisi', icon: DollarSign }, // <-- Tambahkan ini
-
+    { href: '/admin/add-ons', label: 'Add-On', icon: Puzzle },
+    { href: '/admin/commissions', label: 'Komisi', icon: DollarSign },
   ];
 
   if (isLoading || !user) {

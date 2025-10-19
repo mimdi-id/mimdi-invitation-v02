@@ -7,7 +7,7 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // <-- Impor usePathname
+import { useRouter, usePathname } from 'next/navigation';
 
 // Tipe data untuk paket
 type Package = {
@@ -15,7 +15,7 @@ type Package = {
   name: string;
 };
 
-// Tipe data untuk pengguna, sekarang menyertakan peran (role)
+// Tipe data untuk pengguna
 interface User {
   id: string;
   name: string;
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname(); // <-- Dapatkan path URL saat ini
+  const pathname = usePathname();
 
   useEffect(() => {
     const storedToken = localStorage.getItem('authToken');
@@ -65,10 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = await response.json();
             setUser(userData);
           } else {
+            // Jika token tidak valid, logout
             logout();
           }
         } catch (error) {
-          console.error('Gagal mengambil data user', error);
+          console.error('Gagal mengambil data user:', error);
           logout();
         } finally {
           setIsLoading(false);
@@ -90,32 +91,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  // --- LOGIKA REDIRECT YANG DIPERBARUI ---
+  // --- LOGIKA REDIRECT YANG LEBIH KUAT ---
   useEffect(() => {
-    // Daftar halaman yang seharusnya tidak diakses jika sudah login
-    const authPages = ['/login', '/register', '/partners/register'];
-
-    if (token && user) {
-      // Jika pengguna sudah login DAN sedang berada di halaman login/register,
-      // maka arahkan mereka ke dashboard yang sesuai.
-      if (authPages.includes(pathname)) {
-        switch (user.role) {
-          case 'ADMIN':
-            router.push('/admin/users');
-            break;
-          case 'PARTNER':
-            router.push('/partner/dashboard');
-            break;
-          case 'CLIENT':
-            router.push('/user/dashboard');
-            break;
-          default:
-            router.push('/login');
-        }
-      }
-      // Jika pengguna sudah login tapi TIDAK di halaman auth, biarkan saja.
+    // Jika masih dalam proses loading, jangan lakukan apa-apa
+    if (isLoading) {
+      return;
     }
-  }, [token, user, router, pathname]); // <-- Tambahkan pathname
+
+    const authPages = ['/login', '/register', '/partners/register'];
+    const isAuthPage = authPages.includes(pathname);
+
+    // Jika pengguna sudah login DAN mereka berada di halaman otentikasi...
+    if (user && isAuthPage) {
+      console.log(`Redirecting logged-in user from auth page (${pathname}) to dashboard...`);
+      switch (user.role) {
+        case 'ADMIN':
+          router.push('/admin/users');
+          break;
+        case 'PARTNER':
+          router.push('/partner/dashboard');
+          break;
+        case 'CLIENT':
+          router.push('/user/dashboard');
+          break;
+        default:
+          router.push('/login');
+      }
+    }
+
+  }, [user, isLoading, router, pathname]); // <-- Tambahkan isLoading sebagai dependensi
 
 
   return (
@@ -132,3 +136,4 @@ export function useAuth() {
   }
   return context;
 }
+

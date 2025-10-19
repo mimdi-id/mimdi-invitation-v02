@@ -3,8 +3,16 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
 
-// Tipe data untuk sebuah paket
+// ... (Tipe data Package tetap sama) ...
 type Package = {
   id: string;
   name: string;
@@ -27,9 +35,8 @@ export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<string | null>(null); // Menyimpan ID paket yang sedang diproses
+  const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
 
-  // useEffect untuk mengambil daftar paket
   useEffect(() => {
     const fetchPackages = async () => {
       try {
@@ -49,7 +56,7 @@ export default function PackagesPage() {
     fetchPackages();
   }, []);
 
-  // Fungsi untuk menangani pembelian paket
+  // --- FUNGSI INI DIPERBARUI ---
   const handlePurchase = async (packageId: string) => {
     if (!token) {
       alert('Anda harus login untuk membeli paket.');
@@ -66,7 +73,11 @@ export default function PackagesPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ packageId }),
+        // FIX: Kirim payload dengan format yang benar
+        body: JSON.stringify({ 
+          itemId: packageId,
+          itemType: 'PACKAGE' 
+        }),
       });
 
       if (!response.ok) {
@@ -75,7 +86,6 @@ export default function PackagesPage() {
       }
       
       alert('Pembelian berhasil! Anda sekarang memiliki paket baru.');
-      // Arahkan ke dashboard setelah berhasil
       router.push('/user/dashboard');
 
     } catch (err) {
@@ -84,9 +94,8 @@ export default function PackagesPage() {
       setIsSubmitting(null);
     }
   };
+  // --- END ---
 
-
-  // useEffect untuk melindungi halaman
   useEffect(() => {
     if (!isAuthLoading && !user) {
       router.push('/login');
@@ -139,13 +148,13 @@ export default function PackagesPage() {
                     </li>
                   )}
                 </ul>
-                <button
+                <Button
                   onClick={() => handlePurchase(pkg.id)}
                   disabled={isSubmitting === pkg.id}
-                  className="w-full rounded-md bg-orange-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-orange-500 disabled:bg-slate-400"
+                  className="w-full"
                 >
                   {isSubmitting === pkg.id ? 'Memproses...' : 'Pilih Paket'}
-                </button>
+                </Button>
               </div>
             </div>
           ))}
