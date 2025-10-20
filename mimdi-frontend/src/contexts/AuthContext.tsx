@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -22,14 +23,17 @@ interface User {
   email: string;
   role: 'CLIENT' | 'ADMIN' | 'PARTNER';
   activePackage: Package | null;
+  invitationQuota: number;
 }
 
+// Tipe data untuk context
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
   login: (token: string) => void;
   logout: () => void;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +47,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const logout = useCallback(() => {
+    localStorage.removeItem('authToken');
+    setToken(null);
+    setUser(null);
+    router.push('/login');
+  }, [router]);
+
+  const fetchUser = useCallback(async (currentToken: string) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      } else {
+        logout();
+      }
+    } catch (error) {
+      console.error('Gagal mengambil data user:', error);
+      logout();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [logout]);
+
+
   useEffect(() => {
     const storedToken = localStorage.getItem('authToken');
     if (storedToken) {
@@ -54,46 +87,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (token) {
-      const fetchUser = async () => {
-        try {
-          const response = await fetch(`${API_URL}/auth/profile`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          } else {
-            // Jika token tidak valid, logout
-            logout();
-          }
-        } catch (error) {
-          console.error('Gagal mengambil data user:', error);
-          logout();
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchUser();
+      setIsLoading(true);
+      fetchUser(token);
     }
-  }, [token]);
+  }, [token, fetchUser]);
 
   const login = (newToken: string) => {
     localStorage.setItem('authToken', newToken);
     setToken(newToken);
   };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    setToken(null);
-    setUser(null);
-    router.push('/login');
-  };
+  const refreshUser = useCallback(() => {
+    if (token) {
+      fetchUser(token);
+    }
+  }, [token, fetchUser]);
 
-  // --- LOGIKA REDIRECT YANG LEBIH KUAT ---
+  // --- PERUBAHAN: Implementasi "Refetch on Window Focus" ---
   useEffect(() => {
-    // Jika masih dalam proses loading, jangan lakukan apa-apa
+    const handleFocus = () => {
+      console.log('Tab focused, refreshing user data...');
+      refreshUser();
+    };
+
+    // Tambahkan event listener saat komponen dimuat
+    window.addEventListener('focus', handleFocus);
+
+    // Hapus event listener saat komponen dibongkar untuk mencegah memory leak
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [refreshUser]); // Jalankan efek ini setiap kali fungsi refreshUser berubah
+
+
+  useEffect(() => {
     if (isLoading) {
       return;
     }
@@ -101,7 +128,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const authPages = ['/login', '/register', '/partners/register'];
     const isAuthPage = authPages.includes(pathname);
 
-    // Jika pengguna sudah login DAN mereka berada di halaman otentikasi...
     if (user && isAuthPage) {
       console.log(`Redirecting logged-in user from auth page (${pathname}) to dashboard...`);
       switch (user.role) {
@@ -119,11 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-  }, [user, isLoading, router, pathname]); // <-- Tambahkan isLoading sebagai dependensi
+  }, [user, isLoading, router, pathname]);
 
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

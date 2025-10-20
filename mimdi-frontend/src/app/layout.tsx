@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-// FIX: Menggunakan path relatif yang benar dari /src/app
 import { AuthProvider } from '../contexts/AuthContext';
+// --- PERUBAHAN: Impor Toaster dari sonner ---
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,7 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          {/* --- PERUBAHAN: Tambahkan komponen Toaster dari sonner --- */}
+          <Toaster richColors />
+        </AuthProvider>
       </body>
     </html>
   );

@@ -3,7 +3,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 // Tipe data untuk sebuah tema/template
 type Template = {
@@ -16,21 +17,19 @@ type Template = {
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function CreateInvitationPage() {
-  // Ambil data 'user' yang sekarang sudah lengkap dengan info paket
-  const { token, isLoading: isAuthLoading, user } = useAuth();
+  // --- PERUBAHAN: Ambil fungsi refreshUser dari AuthContext ---
+  const { token, isLoading: isAuthLoading, user, refreshUser } = useAuth();
   const router = useRouter();
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // State untuk alur pembuatan undangan
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // useEffect untuk mengambil daftar tema saat halaman dimuat
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
@@ -42,7 +41,9 @@ export default function CreateInvitationPage() {
         const data: Template[] = await response.json();
         setTemplates(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+        const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
+        setError(errorMessage);
+        toast.error('Gagal Memuat Tema', { description: errorMessage });
       } finally {
         setIsLoading(false);
       }
@@ -50,7 +51,6 @@ export default function CreateInvitationPage() {
     fetchTemplates();
   }, []);
   
-  // Fungsi untuk menangani pembuatan undangan
   const handleCreateInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !selectedTemplateId || !title.trim() || !slug.trim()) return;
@@ -68,37 +68,42 @@ export default function CreateInvitationPage() {
         body: JSON.stringify({ title, slug, templateId: selectedTemplateId }),
       });
 
+      const resultData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal membuat undangan');
+        throw new Error(resultData.message || 'Gagal membuat undangan');
       }
       
-      // Jika berhasil, kembali ke dashboard
+      toast.success('Undangan Berhasil Dibuat!');
+      
+      // --- PERUBAHAN: Panggil refreshUser untuk memperbarui data kuota ---
+      if(refreshUser) {
+        await refreshUser();
+      }
+      
+      // Setelah data pengguna diperbarui, baru kembali ke dashboard
       router.push('/user/dashboard');
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+      const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
+      setError(errorMessage);
+      toast.error('Gagal Membuat Undangan', { description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Fungsi untuk menangani pemilihan tema
   const handleSelectTemplate = (template: Template) => {
-    // Cek apakah tema adalah PREMIUM
     if (template.category === 'PREMIUM') {
-      // Cek apakah pengguna punya paket Premium
       if (user?.activePackage?.name !== 'Premium') {
-        alert('Fitur ini memerlukan paket Premium. Silakan upgrade paket Anda.');
-        router.push('/user/packages'); // Arahkan ke halaman pembelian
-        return; // Hentikan proses
+        toast.warning('Fitur Premium', { description: 'Fitur ini memerlukan paket Premium. Silakan upgrade paket Anda.' });
+        router.push('/user/packages'); 
+        return;
       }
     }
-    // Jika lolos (tema BASIC atau user punya paket PREMIUM), lanjutkan pemilihan
     setSelectedTemplateId(template.id);
   };
 
-  // useEffect untuk melindungi halaman
   useEffect(() => {
     if (!isAuthLoading && !user) {
       router.push('/login');
@@ -113,7 +118,7 @@ export default function CreateInvitationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-8">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="mx-auto max-w-5xl">
         <button 
           onClick={() => selectedTemplateId ? setSelectedTemplateId(null) : router.back()} 
@@ -127,7 +132,7 @@ export default function CreateInvitationPage() {
             <h1 className="text-3xl font-bold text-slate-900">Pilih Tema Undangan</h1>
             <p className="mt-2 text-slate-600">Pilih desain yang paling Anda sukai sebagai dasar undangan Anda.</p>
             
-            <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {templates.map((template) => {
                 const isPremium = template.category === 'PREMIUM';
                 const isLocked = isPremium && !hasPremiumPackage;
@@ -135,23 +140,23 @@ export default function CreateInvitationPage() {
                 return (
                   <div 
                     key={template.id} 
-                    onClick={() => !isLocked && handleSelectTemplate(template)} // Hanya bisa diklik jika tidak terkunci
-                    className={`group relative overflow-hidden rounded-lg bg-white shadow-md transition-all ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-xl hover:-translate-y-1'}`}
+                    onClick={() => !isLocked && handleSelectTemplate(template)}
+                    className={`group relative overflow-hidden rounded-lg bg-white shadow-md transition-all ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:shadow-xl hover:-translate-y-1'}`}
                   >
                     {isPremium && (
                       <div className={`absolute top-2 right-2 z-10 rounded-full px-2 py-1 text-xs font-bold text-white ${isLocked ? 'bg-gray-500' : 'bg-orange-500'}`}>
                         {isLocked ? 'Terkunci' : 'Premium'}
                       </div>
                     )}
-                     {isLocked && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                         <span className="text-lg font-bold text-white">Upgrade Paket</span>
-                      </div>
-                    )}
+                      {isLocked && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-lg font-bold text-white">Upgrade Paket</span>
+                        </div>
+                      )}
                     <img
                       src={template.previewUrl || 'https://placehold.co/600x400/EEE/333?text=No+Preview'}
                       alt={template.name}
-                      className="aspect-video w-full object-cover transition-transform group-hover:scale-105"
+                      className="aspect-[4/3] w-full object-cover transition-transform group-hover:scale-105"
                     />
                     <div className="p-4">
                       <h3 className="font-semibold text-slate-800">{template.name}</h3>
@@ -168,21 +173,21 @@ export default function CreateInvitationPage() {
             <p className="mt-2 text-slate-600">Isi detail dasar untuk undangan Anda.</p>
             <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-3">
               <div className="md:col-span-1">
-                 <div className="overflow-hidden rounded-lg bg-white shadow">
-                  <img
-                    src={selectedTemplate?.previewUrl || ''}
-                    alt={selectedTemplate?.name}
-                    className="aspect-video w-full object-cover"
-                  />
-                  <div className="p-4">
-                    <h3 className="font-semibold text-slate-800">{selectedTemplate?.name}</h3>
-                    <p className="text-sm text-slate-500">Tema yang dipilih</p>
+                  <div className="overflow-hidden rounded-lg bg-white shadow">
+                   <img
+                      src={selectedTemplate?.previewUrl || ''}
+                      alt={selectedTemplate?.name}
+                      className="aspect-[4/3] w-full object-cover"
+                    />
+                    <div className="p-4">
+                      <h3 className="font-semibold text-slate-800">{selectedTemplate?.name}</h3>
+                      <p className="text-sm text-slate-500">Tema yang dipilih</p>
+                    </div>
                   </div>
-                </div>
               </div>
               <div className="md:col-span-2">
-                 <form onSubmit={handleCreateInvitation} className="space-y-4 rounded-lg bg-white p-8 shadow">
-                   <div>
+                  <form onSubmit={handleCreateInvitation} className="space-y-6 rounded-lg bg-white p-8 shadow">
+                    <div>
                       <label htmlFor="title" className="block text-sm font-medium text-slate-700">Judul Undangan</label>
                       <input
                         type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} required
@@ -203,14 +208,15 @@ export default function CreateInvitationPage() {
                     </div>
                     {error && <p className="text-sm text-red-600">{error}</p>}
                     <div className="text-right pt-4">
-                       <button
-                        type="submit" disabled={isSubmitting}
-                        className="rounded-md bg-slate-900 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-400"
-                       >
-                        {isSubmitting ? 'Membuat...' : 'Buat Undangan'}
-                      </button>
+                        <button
+                          type="submit" disabled={isSubmitting}
+                          className="inline-flex items-center rounded-md bg-slate-900 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-400"
+                        >
+                          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {isSubmitting ? 'Membuat...' : 'Buat Undangan'}
+                        </button>
                     </div>
-                 </form>
+                  </form>
               </div>
             </div>
           </div>
